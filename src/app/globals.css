@@ -24,3 +24,10 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.rdp-head_cell {
+  color: #1e293b !important; 
+  opacity: 1 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
