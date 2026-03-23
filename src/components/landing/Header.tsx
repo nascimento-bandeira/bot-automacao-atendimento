@@ -2,15 +2,20 @@ import { tenant } from "@/config/tenant";
 
 export function Header() {
   return (
-    <header className={`${tenant.colors.primary} text-white p-4 shadow-md`}>
-      <div className="container mx-auto flex justify-between items-center">
-        <h1 className="text-2xl font-bold">{tenant.name}</h1>
+    <header className={`${tenant.colors.primary} text-white shadow-md w-full`}>
+      <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 p-4 sm:p-5 text-center sm:text-left">
+        
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          {tenant.name}
+        </h1>
+
         <a 
           href={`https://wa.me/${tenant.whatsappNumber}`}
           target="_blank"
-          className={`${tenant.colors.accent} px-4 py-2 rounded-md text-sm font-semibold`}
+          rel="noopener noreferrer"
+          className={`${tenant.colors.accent} w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl sm:rounded-lg text-sm font-semibold shadow-md active:scale-95 transition-all text-center`}
         >
-          Faça seu agendamento pelo WhatsApp aqui!
+          Agendar pelo WhatsApp
         </a>
       </div>
     </header>
