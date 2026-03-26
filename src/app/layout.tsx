@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { BottomNav } from "@/components/navigation/BottomNav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Focus. | Agência de Tráfego e Performance",
-  description: "Estrategistas em ROI e funis de venda de alta conversão.",
+  title: "Atendimento",
+  description: "Agendamento de serviços",
   icons: {
     icon: "/favicon.ico",
   },
@@ -26,11 +27,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className="antialiased bg-surface text-slate-900 min-h-screen">
+        <main className="pb-24">
+          {children}
+        </main>
+
+        <BottomNav />
+      </body>
     </html>
   );
 }
