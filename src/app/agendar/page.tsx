@@ -14,7 +14,9 @@ export default function BookingPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState("");
-  const [time, setTime] = useState("09:00");
+  const [time, setTime] = useState("");
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [businessHours, setBusinessHours] = useState<any[]>([]);
   const [isBooking, setIsBooking] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,11 +28,13 @@ export default function BookingPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [servs, profs] = await Promise.all([
+      const [servs, profs, hours] = await Promise.all([
         api.getServices(tenant.slug),
-        api.getProfessionals(tenant.slug)
+        api.getProfessionals(tenant.slug),
+        api.getBusinessHours(tenant.slug)
       ]);
       if (servs) setServices(servs);
+      if (hours) setBusinessHours(hours);
       if (profs && profs.length > 0) {
         setProfessionals(profs);
         setSelectedProfessional(profs[0]);
@@ -41,6 +45,52 @@ export default function BookingPage() {
       setIsLoading(false);
     }
   };
+
+  const generateTimeSlots = (rangeStr: string) => {
+    if (!rangeStr || rangeStr === 'FECHADO') return [];
+    
+    // Suporta vários tipos de traços (hífen, en-dash, em-dash) e normaliza
+    const normalizedRange = rangeStr.replace(/[—–-]/g, '|');
+    if (!normalizedRange.includes('|')) return [];
+
+    const [start, end] = normalizedRange.split('|').map(t => t.trim());
+    const slots: string[] = [];
+    
+    let current = new Date(`2024-01-01T${start}:00`);
+    const limit = new Date(`2024-01-01T${end}:00`);
+    
+    while (current < limit) {
+      const hours = current.getHours().toString().padStart(2, '0');
+      const minutes = current.getMinutes().toString().padStart(2, '0');
+      slots.push(`${hours}:${minutes}`);
+      current.setMinutes(current.getMinutes() + 30);
+    }
+    
+    return slots;
+  };
+
+  useEffect(() => {
+    if (date && businessHours.length > 0) {
+      const selectedDate = new Date(date + 'T00:00:00');
+      const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday...
+      
+      // Mapeamento simples baseado nos labels padrão
+      // Ajustável se os labels mudarem drasticamente
+      let dayRange;
+      if (dayOfWeek === 0) {
+        dayRange = businessHours.find(h => h.label.toLowerCase().includes('domingo'));
+      } else if (dayOfWeek === 6) {
+        dayRange = businessHours.find(h => h.label.toLowerCase().includes('sábado') || h.label.toLowerCase().includes('sabado'));
+      } else {
+        dayRange = businessHours.find(h => h.label.toLowerCase().includes('segunda') || h.label.toLowerCase().includes('sexta'));
+      }
+
+      const slots = dayRange ? generateTimeSlots(dayRange.time) : [];
+      setAvailableSlots(slots);
+      if (slots.length > 0) setTime(slots[0]);
+      else setTime("");
+    }
+  }, [date, businessHours]);
 
   const handleConfirm = async () => {
     if (!selectedService || !selectedProfessional) return;
@@ -167,13 +217,18 @@ export default function BookingPage() {
         <div className="space-y-2">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter ml-1">Horário</label>
           <select 
-            className="w-full p-4 bg-white rounded-2xl border border-slate-100 shadow-stitch text-sm font-bold outline-none appearance-none"
+            className="w-full p-4 bg-white rounded-2xl border border-slate-100 shadow-stitch text-sm font-bold outline-none appearance-none disabled:opacity-50"
             value={time}
             onChange={(e) => setTime(e.target.value)}
+            disabled={availableSlots.length === 0}
           >
-            <option value="09:00">09:00</option>
-            <option value="10:00">10:00</option>
-            <option value="14:00">14:00</option>
+            {availableSlots.length > 0 ? (
+              availableSlots.map(slot => (
+                <option key={slot} value={slot}>{slot}</option>
+              ))
+            ) : (
+              <option value="">Indisponível</option>
+            )}
           </select>
         </div>
       </section>
