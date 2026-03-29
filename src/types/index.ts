@@ -1,8 +1,41 @@
+export interface Settings {
+  id: string;
+  slug: string;
+  name: string;
+  owner_name: string;
+  whatsapp_number: string;
+  logo_url?: string;
+}
+
 export interface Service {
   id: string;
   name: string;
-  durationMinutes: number;
+  duration_minutes: number;
   price: number;
+}
+
+export interface Professional {
+  id: string;
+  name: string;
+  role: string;
+  image_url?: string;
+}
+
+export interface Appointment {
+  id: string;
+  client_name?: string;
+  clientName?: string; // Some pages use clientName
+  service: string;
+  time: string;
+  duration: string;
+  status: 'AGENDADO' | 'REALIZADO' | 'CANCELADO';
+}
+
+export interface BusinessHour {
+  id: string;
+  label: string;
+  time: string;
+  closed: boolean;
 }
 
 export interface TenantConfig {

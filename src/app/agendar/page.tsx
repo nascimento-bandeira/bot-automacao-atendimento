@@ -3,20 +3,21 @@
 import { useState, useEffect } from 'react';
 import { tenant } from "@/config/tenant";
 import { formatCurrency } from "@/utils/format";
-import { User, Phone, Scissors, Calendar, Clock, CheckCircle2 } from 'lucide-react';
+import { User, Phone, Scissors, Clock, CheckCircle2 } from 'lucide-react';
 import { api } from '@/services/api';
+import { Service, Professional, BusinessHour } from '@/types';
 
 export default function BookingPage() {
-  const [services, setServices] = useState<any[]>([]);
-  const [professionals, setProfessionals] = useState<any[]>([]);
-  const [selectedService, setSelectedService] = useState<any | null>(null);
-  const [selectedProfessional, setSelectedProfessional] = useState<any | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [businessHours, setBusinessHours] = useState<any[]>([]);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
   const [isBooking, setIsBooking] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +57,7 @@ export default function BookingPage() {
     const [start, end] = normalizedRange.split('|').map(t => t.trim());
     const slots: string[] = [];
     
-    let current = new Date(`2024-01-01T${start}:00`);
+    const current = new Date(`2024-01-01T${start}:00`);
     const limit = new Date(`2024-01-01T${end}:00`);
     
     while (current < limit) {

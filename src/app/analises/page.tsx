@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { tenant } from "@/config/tenant";
 import { AppHeader } from "@/components/navigation/AppHeader";
 import { formatCurrency } from "@/utils/format";
-import { TrendingUp, Calendar, ArrowUpRight, Award } from "lucide-react";
+import { TrendingUp, ArrowUpRight, Award } from "lucide-react";
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState('Semana');

@@ -6,11 +6,13 @@ import { Plus } from "lucide-react";
 import { formatCurrency } from "@/utils/format";
 import ClientCard from "@/components/booking/ClientCard";
 import { api } from "@/services/api";
+import { Appointment, Settings } from "@/types";
 
 export const revalidate = 0; // Disable cache for real-time dashboard
 
 export default async function Home() {
-  let settings, appointments = [];
+  let settings: Settings | null = null;
+  let appointments: Appointment[] = [];
   try {
     const [setts, apps] = await Promise.all([
       api.getSettings(tenant.slug),
@@ -24,14 +26,14 @@ export default async function Home() {
   const doneAppointments = appointments.filter(a => a.status === 'REALIZADO');
   const upcomingAppointments = appointments.filter(a => a.status === 'AGENDADO');
   
-  const revenueToday = doneAppointments.reduce((acc, curr) => {
+  const revenueToday = doneAppointments.reduce((acc) => {
     // Attempt to extract numeric price from service string if possible, or assume a fixed average (R$45) for MVP compatibility
     return acc + 45; 
   }, 0);
   const sessionsToday = doneAppointments.length;
   
   const nextClient = upcomingAppointments[0] ? {
-    name: upcomingAppointments[0].client_name,
+    name: upcomingAppointments[0].client_name || upcomingAppointments[0].clientName || 'Cliente',
     procedure: upcomingAppointments[0].service,
     time: upcomingAppointments[0].time,
     status: upcomingAppointments[0].status

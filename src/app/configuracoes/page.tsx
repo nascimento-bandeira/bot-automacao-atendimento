@@ -6,11 +6,13 @@ import { formatCurrency } from "@/utils/format";
 import { Clock, Scissors, Users, Plus, Check, X, User, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "@/services/api";
+import { Professional, Service, BusinessHour } from "@/types";
+import Image from "next/image";
 
 export default function SettingsPage() {
-  const [professionals, setProfessionals] = useState<any[]>([]);
-  const [services, setServices] = useState<any[]>([]);
-  const [businessHours, setBusinessHours] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
   const [logoUrl, setLogoUrl] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [companyName, setCompanyName] = useState(tenant.name);
@@ -77,7 +79,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleUpdateHour = (index: number, field: 'time' | 'closed', value: any) => {
+  const handleUpdateHour = (index: number, field: 'time' | 'closed', value: string | boolean) => {
     const updated = [...businessHours];
     updated[index] = { ...updated[index], [field]: value };
     if (field === 'closed' && value === true) {
@@ -166,7 +168,7 @@ export default function SettingsPage() {
         <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-stitch space-y-6">
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 group">
-              <img src={logoUrl || '/next.svg'} alt="Logo" className="w-full h-full object-cover" />
+              <Image src={logoUrl || '/next.svg'} alt="Logo" width={64} height={64} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                  <p className="text-[8px] text-white font-bold uppercase">Mudar</p>
               </div>

@@ -4,45 +4,6 @@ import { useState } from 'react';
 import { tenant } from '@/config/tenant';
 import { Service } from '@/types';
 
-// Mock de horários (Depois virá do Supabase)
-const availableTimes = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'];
-
-const CalendarStyleWrapper = ({ children }: { children: React.ReactNode }) => {
-const accentColor = tenant.colors.accent.replace('bg-', '');
-
-  return (
-    <>
-      <style>{`
-        .rdp-caption_label, .rdp-head_cell { 
-          color: #334155 !important; 
-          font-weight: 600 !important;
-        }
-
-        .rdp-day { 
-          color: #475569 !important; 
-        }
-
-        .rdp-day_today { 
-          color: ${accentColor} !important; 
-          font-weight: 700 !important;
-        }
-
-        .rdp-day_selected, .rdp-day_selected:hover {
-          background-color: ${accentColor} !important;
-          color: white !important;
-          border-radius: 9999px !important; 
-          opacity: 1 !important;
-        }
-
-        .rdp-day_outside { 
-          color: #cbd5e1 !important; /* slate-300 */
-        }
-      `}</style>
-      {children}
-    </>
-  );
-};
-
 export function BookingCalendar() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -63,17 +24,6 @@ export function BookingCalendar() {
     const whatsappUrl = `https://wa.me/${tenant.whatsappNumber}?text=${encodedMessage}`;
 
     window.open(whatsappUrl, '_blank');
-  };
-
-  const modifiersStyles = {
-    selected: { 
-      color: 'white',
-      backgroundColor: tenant.colors.accent.replace('bg-', ''),
-    },
-    today: { 
-      color: tenant.colors.accent.replace('bg-', ''),
-      fontWeight: 'bold'
-    }
   };
 
   return (
@@ -102,7 +52,7 @@ export function BookingCalendar() {
                     <option value="" disabled className="bg-slate-800">Escolha um serviço...</option>
                     {tenant.services.map(service => (
                         <option key={service.id} value={service.id} className="bg-slate-800 py-2">
-                            {service.name} — {service.durationMinutes} min ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)})
+                            {service.name} — {service.duration_minutes} min ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)})
                         </option>
                     ))}
                 </select>

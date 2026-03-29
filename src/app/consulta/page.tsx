@@ -3,18 +3,19 @@
 import { useState, useEffect } from 'react';
 import { tenant } from "@/config/tenant";
 import { AppHeader } from "@/components/navigation/AppHeader";
-import { MoreVertical, Plus, Trash2, Clock, X, Check, Calendar as CalendarIcon, Scissors, User, Settings2 } from "lucide-react";
+import { Plus, Trash2, Clock, X, Check, Calendar as CalendarIcon, Scissors, Settings2 } from "lucide-react";
 import Link from 'next/link';
 import { formatCurrency } from "@/utils/format";
 import { api } from "@/services/api";
+import { Appointment, Service } from "@/types";
 
 export default function AgendaPage() {
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('TODOS');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [editingApp, setEditingApp] = useState<any | null>(null);
-  const [services, setServices] = useState<any[]>([]);
+  const [editingApp, setEditingApp] = useState<Appointment | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(0); // Index of generated days
 
@@ -58,7 +59,7 @@ export default function AgendaPage() {
   const days = getDays();
   const currentMonth = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date());
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const handleStatusChange = async (id: string, newStatus: Appointment['status']) => {
     setActiveMenuId(null);
     try {
       // Otimista
@@ -287,7 +288,7 @@ export default function AgendaPage() {
                                     <button
                                         key={status}
                                         type="button"
-                                        onClick={() => setEditingApp({ ...editingApp, status })}
+                                        onClick={() => setEditingApp({ ...editingApp, status: status as Appointment['status'] })}
                                         className={`py-3 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border-2 ${
                                             editingApp.status === status
                                             ? status === 'REALIZADO' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' :

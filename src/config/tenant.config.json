@@ -9,9 +9,9 @@
     "accent": "bg-amber-600"
   },
   "services": [
-    { "id": "1", "name": "Corte Feminino", "durationMinutes": 60, "price": 120 },
-    { "id": "2", "name": "Coloração", "durationMinutes": 120, "price": 250 },
-    { "id": "3", "name": "Manicure", "durationMinutes": 45, "price": 50 }
+    { "id": "1", "name": "Corte Feminino", "duration_minutes": 60, "price": 120 },
+    { "id": "2", "name": "Coloração", "duration_minutes": 120, "price": 250 },
+    { "id": "3", "name": "Manicure", "duration_minutes": 45, "price": 50 }
   ],
   "highlights": [
     { "label": "Média Avaliações", "value": "4.9", "type": "star" },

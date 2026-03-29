@@ -23,7 +23,7 @@ export function Services() {
             
             <h3 className="text-lg font-bold text-slate-800 mb-1">{service.name}</h3>
             <p className="text-slate-500 text-sm font-medium">
-              Duração aproximada: {service.durationMinutes} min
+              Duração aproximada: {service.duration_minutes} min
             </p>
           </div>
         ))}

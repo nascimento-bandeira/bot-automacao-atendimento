@@ -1,12 +1,13 @@
 import { tenant } from "@/config/tenant";
 import { Bell } from "lucide-react";
+import Image from "next/image";
 
 
 export function Header() {
   return (
     <header className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <img src={tenant.logoUrl || '/next.svg'} alt={tenant.name} width={40} height={40} className="rounded-full bg-slate-100 object-cover" />
+          <Image src={tenant.logoUrl || '/next.svg'} alt={tenant.name || 'Logo'} width={40} height={40} className="rounded-full bg-slate-100 object-cover" />
           <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">
             {tenant.name}
           </h1>

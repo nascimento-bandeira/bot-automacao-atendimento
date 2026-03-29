@@ -1,0 +1,60 @@
+
+> automacao-atendimento@0.1.0 lint
+> eslint
+
+
+/home/mateus/Documentos/automacao-atendimento/src/app/agendar/page.tsx
+   6:33  warning  'Calendar' is defined but never used                @typescript-eslint/no-unused-vars
+  10:44  error    Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  11:54  error    Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  12:58  error    Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  13:68  error    Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  19:54  error    Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  59:9   error    'current' is never reassigned. Use 'const' instead  prefer-const
+
+/home/mateus/Documentos/automacao-atendimento/src/app/analises/page.tsx
+  7:22  warning  'Calendar' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/mateus/Documentos/automacao-atendimento/src/app/configuracoes/page.tsx
+   11:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   12:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   13:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   80:77  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  169:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/mateus/Documentos/automacao-atendimento/src/app/consulta/page.tsx
+   6:10  warning  'MoreVertical' is defined but never used  @typescript-eslint/no-unused-vars
+   6:91  warning  'User' is defined but never used          @typescript-eslint/no-unused-vars
+  12:52  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:44  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/mateus/Documentos/automacao-atendimento/src/app/layout.tsx
+   6:7  warning  'geistSans' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  11:7  warning  'geistMono' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/home/mateus/Documentos/automacao-atendimento/src/app/page.tsx
+  27:54  warning  'curr' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/mateus/Documentos/automacao-atendimento/src/components/booking/BookingCalendar.tsx
+   8:7  warning  'availableTimes' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  10:7  warning  'CalendarStyleWrapper' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  68:9  warning  'modifiersStyles' is assigned a value but never used       @typescript-eslint/no-unused-vars
+
+/home/mateus/Documentos/automacao-atendimento/src/components/booking/ClientCard.tsx
+  1:10  warning  'MoreVertical' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/mateus/Documentos/automacao-atendimento/src/components/landing/Header.tsx
+  9:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/mateus/Documentos/automacao-atendimento/src/components/navigation/AppHeader.tsx
+  8:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/mateus/Documentos/automacao-atendimento/src/services/api.ts
+   17:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  113:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 30 problems (16 errors, 14 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

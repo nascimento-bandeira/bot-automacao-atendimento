@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase';
+import { Settings, Service, Professional, Appointment, BusinessHour } from '@/types';
 
 export const api = {
   // ============================
   // SETTINGS
   // ============================
-  async getSettings(slug: string) {
+  async getSettings(slug: string): Promise<Settings | null> {
     const { data, error } = await supabase
       .from('sys_settings')
       .select('*')
@@ -14,7 +15,7 @@ export const api = {
     return data;
   },
 
-  async updateSettings(slug: string, updates: any) {
+  async updateSettings(slug: string, updates: Partial<Settings>) {
     const { data, error } = await supabase
       .from('sys_settings')
       .update(updates)
@@ -28,14 +29,14 @@ export const api = {
   // ============================
   // SERVICES
   // ============================
-  async getServices(slug: string) {
+  async getServices(slug: string): Promise<Service[]> {
     const { data, error } = await supabase
       .from('sys_services')
       .select('*')
       .eq('slug', slug)
       .order('created_at', { ascending: true });
     if (error) throw error;
-    return data;
+    return data || [];
   },
 
   async createService(slug: string, serviceData: { name: string; price: number; duration_minutes: number }) {
@@ -59,14 +60,14 @@ export const api = {
   // ============================
   // PROFESSIONALS
   // ============================
-  async getProfessionals(slug: string) {
+  async getProfessionals(slug: string): Promise<Professional[]> {
     const { data, error } = await supabase
       .from('sys_professionals')
       .select('*')
       .eq('slug', slug)
       .order('created_at', { ascending: true });
     if (error) throw error;
-    return data;
+    return data || [];
   },
 
   async createProfessional(slug: string, profData: { name: string; role: string; image_url: string }) {
@@ -90,17 +91,17 @@ export const api = {
   // ============================
   // APPOINTMENTS
   // ============================
-  async getAppointments(slug: string) {
+  async getAppointments(slug: string): Promise<Appointment[]> {
     const { data, error } = await supabase
       .from('sys_appointments')
       .select('*')
       .eq('slug', slug)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data;
+    return data || [];
   },
 
-  async createAppointment(slug: string, appData: any) {
+  async createAppointment(slug: string, appData: Partial<Appointment>) {
     const { data, error } = await supabase
       .from('sys_appointments')
       .insert({ ...appData, slug })
@@ -110,7 +111,7 @@ export const api = {
     return data;
   },
 
-  async updateAppointment(id: string, updates: any) {
+  async updateAppointment(id: string, updates: Partial<Appointment>) {
     const { data, error } = await supabase
       .from('sys_appointments')
       .update(updates)
@@ -132,14 +133,14 @@ export const api = {
   // ============================
   // BUSINESS HOURS
   // ============================
-  async getBusinessHours(slug: string) {
+  async getBusinessHours(slug: string): Promise<BusinessHour[]> {
     const { data, error } = await supabase
       .from('sys_business_hours')
       .select('*')
       .eq('slug', slug)
       .order('order_index', { ascending: true });
     if (error) throw error;
-    return data;
+    return data || [];
   },
 
   async updateBusinessHour(id: string, updates: { time?: string; closed?: boolean }) {
