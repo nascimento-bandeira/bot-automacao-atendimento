@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../config/tenant.config.json";
 
 @theme {
   /* Cores do Modelo Stitch (Google) */

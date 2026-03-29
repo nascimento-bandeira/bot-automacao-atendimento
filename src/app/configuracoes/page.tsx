@@ -4,15 +4,17 @@ import { tenant } from "@/config/tenant";
 import { AppHeader } from "@/components/navigation/AppHeader";
 import { formatCurrency } from "@/utils/format";
 import { Clock, Scissors, Users, Plus, Check, X, User, Trash2 } from "lucide-react";
-import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "@/services/api";
 
 export default function SettingsPage() {
-  const [professionals, setProfessionals] = useState(tenant.professionals);
-  const [services, setServices] = useState(tenant.services);
-  const [businessHours, setBusinessHours] = useState(tenant.businessHours);
-  const [logoUrl, setLogoUrl] = useState(tenant.logoUrl);
-  const [whatsapp, setWhatsapp] = useState(tenant.whatsappNumber);
+  const [professionals, setProfessionals] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [businessHours, setBusinessHours] = useState<any[]>([]);
+  const [logoUrl, setLogoUrl] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [companyName, setCompanyName] = useState(tenant.name);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingService, setIsAddingService] = useState(false);
@@ -27,19 +29,51 @@ export default function SettingsPage() {
   const [newServicePrice, setNewServicePrice] = useState("");
   const [newServiceDuration, setNewServiceDuration] = useState("30");
 
-  const handleAddService = () => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [setts, servs, profs, hours] = await Promise.all([
+        api.getSettings(tenant.slug),
+        api.getServices(tenant.slug),
+        api.getProfessionals(tenant.slug),
+        api.getBusinessHours(tenant.slug)
+      ]);
+      
+      if (setts) {
+        setWhatsapp(setts.whatsapp_number || '');
+        setLogoUrl(setts.logo_url || '');
+        setCompanyName(setts.name || tenant.name);
+      }
+      if (servs) setServices(servs);
+      if (profs) setProfessionals(profs);
+      if (hours && hours.length > 0) setBusinessHours(hours);
+    } catch (e) {
+      console.error("Erro ao carregar configurações", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddService = async () => {
     if (newServiceName && newServicePrice) {
-      const newService = {
-        id: `s${services.length + 1}`,
-        name: newServiceName,
-        price: parseFloat(newServicePrice),
-        durationMinutes: parseInt(newServiceDuration),
-      };
-      setServices([...services, newService]);
-      setIsAddingService(false);
-      setNewServiceName("");
-      setNewServicePrice("");
-      setNewServiceDuration("30");
+      try {
+        const newService = await api.createService(tenant.slug, {
+          name: newServiceName,
+          price: parseFloat(newServicePrice),
+          duration_minutes: parseInt(newServiceDuration),
+        });
+        setServices([...services, newService]);
+        setIsAddingService(false);
+        setNewServiceName("");
+        setNewServicePrice("");
+        setNewServiceDuration("30");
+      } catch (e) {
+        console.error("Erro ao adicionar serviço", e);
+      }
     }
   };
 
@@ -54,34 +88,66 @@ export default function SettingsPage() {
     setBusinessHours(updated);
   };
 
-  const handleRemoveService = (id: string) => {
-    setServices(services.filter(s => s.id !== id));
-  };
-
-  const handleSave = () => {
-    setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 2000);
-  };
-
-  const handleAddProfessional = () => {
-    if (newName && newRole) {
-      const newProfessional = {
-        id: `p${professionals.length + 1}`,
-        name: `${newName} ${newSurname}`.trim(),
-        role: newRole,
-        imageUrl: "", // Will use fallback initials
-      };
-      setProfessionals([...professionals, newProfessional]);
-      setIsAdding(false);
-      setNewName("");
-      setNewSurname("");
-      setNewRole("");
+  const handleRemoveService = async (id: string) => {
+    try {
+      await api.deleteService(id);
+      setServices(services.filter(s => s.id !== id));
+    } catch (e) {
+      console.error("Erro ao remover serviço", e);
     }
   };
 
-  const handleRemoveProfessional = (id: string) => {
-    setProfessionals(professionals.filter(p => p.id !== id));
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await api.updateSettings(tenant.slug, { whatsapp_number: whatsapp });
+      // Salva os horários que possuem IDs
+      for (const h of businessHours) {
+        if (h.id) {
+          await api.updateBusinessHour(h.id, { time: h.time, closed: h.closed });
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao salvar", e);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleAddProfessional = async () => {
+    if (newName && newRole) {
+      try {
+        const fullName = `${newName} ${newSurname}`.trim();
+        const newProfessional = await api.createProfessional(tenant.slug, {
+          name: fullName,
+          role: newRole,
+          image_url: '',
+        });
+        setProfessionals([...professionals, newProfessional]);
+        setIsAdding(false);
+        setNewName("");
+        setNewSurname("");
+        setNewRole("");
+      } catch (e) {
+        console.error("Erro ao adicionar profissional", e);
+      }
+    }
+  };
+
+  const handleRemoveProfessional = async (id: string) => {
+    try {
+      await api.deleteProfessional(id);
+      setProfessionals(professionals.filter(p => p.id !== id));
+    } catch (e) {
+      console.error("Erro ao remover profissional", e);
+    }
+  };
+
+  if (isLoading) return (
+    <main className="min-h-screen bg-surface flex items-center justify-center">
+      <p className="text-slate-400 font-bold uppercase tracking-widest animate-pulse">Carregando Painel...</p>
+    </main>
+  );
 
   return (
     <main className="min-h-screen bg-surface pb-32">
@@ -100,13 +166,13 @@ export default function SettingsPage() {
         <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-stitch space-y-6">
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 group">
-              <Image src={logoUrl || '/logo.png'} alt="Logo" fill className="object-cover" />
+              <img src={logoUrl || '/next.svg'} alt="Logo" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                  <p className="text-[8px] text-white font-bold uppercase">Mudar</p>
               </div>
             </div>
             <div className="flex-1 space-y-1">
-              <h3 className="font-bold text-slate-900 leading-none">{tenant.name}</h3>
+              <h3 className="font-bold text-slate-900 leading-none">{companyName}</h3>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Perfil Comercial</p>
             </div>
           </div>
@@ -228,7 +294,7 @@ export default function SettingsPage() {
                 
                 <div className="flex-1 ml-2">
                   <h4 className="font-bold text-slate-900">{service.name}</h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{service.durationMinutes} MINUTOS</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{service.duration_minutes} MINUTOS</p>
                 </div>
                 <div className="text-right flex items-center gap-3">
                   <p className="text-lg font-black text-amber-700">{formatCurrency(service.price)}</p>
@@ -265,14 +331,16 @@ export default function SettingsPage() {
           <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 -mx-6 px-6">
             {professionals.map((pro) => (
               <div key={pro.id} className="flex-shrink-0 w-48 space-y-3">
-                <div className="relative h-64 rounded-3xl overflow-hidden shadow-lg group">
-                  <Image src={pro.imageUrl || `https://api.dicebear.com/8.x/initials/svg?seed=${pro.name}`} alt={pro.name} fill className="object-cover transition-transform group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent transition-opacity group-hover:opacity-90" />
-                  <p className="absolute bottom-4 left-4 text-white font-black text-xl">{pro.name.split(' ')[0]}</p>
+                <div className="relative p-5 rounded-3xl bg-slate-50 border border-slate-100 shadow-sm group hover:shadow-md transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center font-black text-xl mb-4">
+                    {pro.name.charAt(0)}
+                  </div>
+                  <p className="font-black text-slate-900 leading-tight text-lg">{pro.name}</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-1">{pro.role}</p>
                   
                   <button 
                     onClick={() => handleRemoveProfessional(pro.id)}
-                    className="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-md text-white/60 hover:text-red-400 hover:bg-black/40 rounded-xl transition-all z-10"
+                    className="absolute top-4 right-4 p-2 bg-white text-slate-400 hover:text-rose-500 hover:bg-rose-50 border border-slate-100 rounded-xl transition-all shadow-sm opacity-0 group-hover:opacity-100"
                     title="Remover profissional"
                   >
                     <Trash2 size={16} />

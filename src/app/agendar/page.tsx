@@ -1,29 +1,73 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { tenant } from "@/config/tenant";
 import { formatCurrency } from "@/utils/format";
 import { User, Phone, Scissors, Calendar, Clock, CheckCircle2 } from 'lucide-react';
-import Image from 'next/image';
+import { api } from '@/services/api';
 
 export default function BookingPage() {
-  const [selectedService, setSelectedService] = useState<typeof tenant.services[0] | null>(null);
-  const [selectedProfessional, setSelectedProfessional] = useState(tenant.professionals[0]);
+  const [services, setServices] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<any[]>([]);
+  const [selectedService, setSelectedService] = useState<any | null>(null);
+  const [selectedProfessional, setSelectedProfessional] = useState<any | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
   const [isBooking, setIsBooking] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleConfirm = () => {
-    setIsBooking(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsBooking(false);
-      setIsSuccess(true);
-    }, 1500);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [servs, profs] = await Promise.all([
+        api.getServices(tenant.slug),
+        api.getProfessionals(tenant.slug)
+      ]);
+      if (servs) setServices(servs);
+      if (profs && profs.length > 0) {
+        setProfessionals(profs);
+        setSelectedProfessional(profs[0]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleConfirm = async () => {
+    if (!selectedService || !selectedProfessional) return;
+    setIsBooking(true);
+    try {
+      await api.createAppointment(tenant.slug, {
+        client_name: name,
+        service: selectedService.name,
+        time: time,
+        duration: `${selectedService.duration_minutes} MIN`,
+        status: 'AGENDADO'
+      });
+      setIsSuccess(true);
+    } catch(e) {
+      console.error("Erro ao agendar", e);
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-surface flex items-center justify-center p-6 text-center">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-amber-600 rounded-full animate-spin"></div>
+      </main>
+    );
+  }
 
   if (isSuccess) {
     return (
@@ -92,13 +136,13 @@ export default function BookingPage() {
           <select 
             value={selectedService?.id || ""} // Garante que volte ao placeholder se necessário
             onChange={(e) => {
-              const service = tenant.services.find(s => s.id === e.target.value);
+              const service = services.find(s => s.id === e.target.value);
               if (service) setSelectedService(service);
             }}
             className="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border border-slate-100 shadow-stitch outline-none appearance-none font-bold text-slate-800"
           >
             <option value="" disabled>Selecione o Serviço</option>
-            {tenant.services.map(service => (
+            {services.map(service => (
               <option key={service.id} value={service.id}>
                 {service.name}
               </option>
@@ -138,18 +182,20 @@ export default function BookingPage() {
       <section className="space-y-4">
         <label className="text-sm font-bold text-slate-400 uppercase tracking-widest ml-1">Profissional</label>
         <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-          {tenant.professionals.map(pro => (
+          {professionals.map(pro => (
             <button 
               key={pro.id}
               onClick={() => setSelectedProfessional(pro)}
-              className={`flex-shrink-0 flex items-center gap-3 p-3 rounded-2xl border transition-all ${selectedProfessional.id === pro.id ? 'bg-brand-50 border-brand-500 ring-1 ring-brand-500' : 'bg-white border-slate-100 shadow-stitch'}`}
+              className={`flex-shrink-0 flex items-center gap-3 p-3 rounded-2xl border transition-all ${selectedProfessional?.id === pro.id ? 'bg-brand-50 border-brand-500 ring-1 ring-brand-500' : 'bg-white border-slate-100 shadow-stitch'}`}
             >
-              <Image src={pro.imageUrl || `https://api.dicebear.com/8.x/initials/svg?seed=${pro.name}`} alt={pro.name} width={40} height={40} className="rounded-xl bg-slate-100" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg ${selectedProfessional?.id === pro.id ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                {pro.name.charAt(0)}
+              </div>
               <div className="text-left">
                 <p className="text-sm font-bold text-slate-900 leading-tight">{pro.name}</p>
                 <p className="text-[10px] text-slate-500 font-medium">{pro.role}</p>
               </div>
-              {selectedProfessional.id === pro.id && <CheckCircle2 size={16} className="text-brand-600" />}
+              {selectedProfessional?.id === pro.id && <CheckCircle2 size={16} className="text-brand-600" />}
             </button>
           ))}
         </div>
@@ -165,7 +211,7 @@ export default function BookingPage() {
               </div>
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter leading-none">Tempo Médio</p>
-                <p className="font-bold text-slate-900">{selectedService.durationMinutes} min</p>
+                <p className="font-bold text-slate-900">{selectedService.duration_minutes} min</p>
               </div>
             </div>
             <div className="text-right">

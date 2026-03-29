@@ -1,20 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { tenant } from "@/config/tenant";
 import { AppHeader } from "@/components/navigation/AppHeader";
 import { MoreVertical, Plus, Trash2, Clock, X, Check, Calendar as CalendarIcon, Scissors, User, Settings2 } from "lucide-react";
-import Image from "next/image";
 import Link from 'next/link';
 import { formatCurrency } from "@/utils/format";
+import { api } from "@/services/api";
 
 export default function AgendaPage() {
-  const [appointments, setAppointments] = useState(tenant.appointments);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('TODOS');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [editingApp, setEditingApp] = useState<typeof tenant.appointments[0] | null>(null);
+  const [editingApp, setEditingApp] = useState<any | null>(null);
+  const [services, setServices] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(0); // Index of generated days
+
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
+  const fetchAppointments = async () => {
+    setIsLoading(true);
+    try {
+      const [apps, servs] = await Promise.all([
+        api.getAppointments(tenant.slug),
+        api.getServices(tenant.slug)
+      ]);
+      setAppointments(apps || []);
+      setServices(servs || []);
+    } catch (e) {
+      console.error("Erro ao buscar agendamentos", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getDays = () => {
     const today = new Date();
@@ -36,27 +58,47 @@ export default function AgendaPage() {
   const days = getDays();
   const currentMonth = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date());
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setAppointments(appointments.map(app => 
-      app.id === id ? { ...app, status: newStatus } : app
-    ));
+  const handleStatusChange = async (id: string, newStatus: string) => {
     setActiveMenuId(null);
-  };
-
-  const handleUpdateAppointment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingApp) {
-      setAppointments(appointments.map(app => 
-        app.id === editingApp.id ? editingApp : app
-      ));
-      setIsModalOpen(false);
-      setEditingApp(null);
+    try {
+      // Otimista
+      setAppointments(appointments.map(app => app.id === id ? { ...app, status: newStatus } : app));
+      await api.updateAppointment(id, { status: newStatus });
+    } catch (e) {
+      console.error("Erro ao atualizar status", e);
+      fetchAppointments(); // Reverte em caso de erro
     }
   };
 
-  const handleDeleteAppointment = (id: string) => {
-    setAppointments(appointments.filter(app => app.id !== id));
+  const handleUpdateAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingApp) {
+      setIsModalOpen(false);
+      try {
+        setAppointments(appointments.map(app => app.id === editingApp.id ? editingApp : app));
+        await api.updateAppointment(editingApp.id, {
+          time: editingApp.time,
+          duration: editingApp.duration,
+          service: editingApp.service,
+          status: editingApp.status
+        });
+        setEditingApp(null);
+      } catch (e) {
+        console.error("Erro ao salvar", e);
+        fetchAppointments();
+      }
+    }
+  };
+
+  const handleDeleteAppointment = async (id: string) => {
     setActiveMenuId(null);
+    try {
+      setAppointments(appointments.filter(app => app.id !== id));
+      await api.deleteAppointment(id);
+    } catch (e) {
+      console.error("Erro ao deletar", e);
+      fetchAppointments();
+    }
   };
 
   const filters = ['TODOS', 'AGENDADO', 'REALIZADO', 'CANCELADO'];
@@ -109,7 +151,15 @@ export default function AgendaPage() {
 
         {/* Lista de Cards */}
         <div className="space-y-4">
-          {appointments
+          {isLoading ? (
+            <div className="text-center py-10">
+              <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest animate-pulse">Carregando Agendamentos...</p>
+            </div>
+          ) : appointments.length === 0 ? (
+            <div className="text-center py-10 bg-slate-50 rounded-3xl border border-slate-100">
+              <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Nenhum agendamento encontrado</p>
+            </div>
+          ) : appointments
             .filter(app => activeFilter === 'TODOS' || app.status === activeFilter)
             .map((app) => (
               <div 
@@ -122,12 +172,8 @@ export default function AgendaPage() {
                   app.status === 'REALIZADO' ? 'bg-emerald-500' : 'bg-rose-400'
                 }`} />
 
-                <div className="relative w-[50px] h-[50px] flex-shrink-0">
-                    <Image src={app.imageUrl || '/next.svg'} alt={app.clientName} fill className="rounded-full bg-slate-100 object-cover" />
-                </div>
-                
                 <div className="flex-1">
-                  <h4 className="font-bold text-slate-900 leading-tight">{app.clientName}</h4>
+                  <h4 className="font-bold text-slate-900 leading-tight">{app.clientName || app.client_name}</h4>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{app.service}</p>
                   
                   {/* Status Pill Interno */}
@@ -294,7 +340,7 @@ export default function AgendaPage() {
                                     value={editingApp.service}
                                     onChange={(e) => setEditingApp({ ...editingApp, service: e.target.value })}
                                 >
-                                    {tenant.services.map(s => (
+                                    {services.map(s => (
                                         <option key={s.id} value={s.name}>{s.name} - {formatCurrency(s.price)}</option>
                                     ))}
                                 </select>

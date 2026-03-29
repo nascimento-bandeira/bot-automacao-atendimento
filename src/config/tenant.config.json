@@ -1,0 +1,33 @@
+{
+  "slug": "barbearia",
+  "name": "Barbearia",
+  "ownerName": "Mateus",
+  "logoUrl": "/next.svg",
+  "whatsappNumber": "5511999999999",
+  "colors": {
+    "primary": "bg-slate-950",
+    "accent": "bg-amber-600"
+  },
+  "highlights": [
+    { "label": "Média Avaliações", "value": "4.9", "type": "star" },
+    { "label": "vs Semana Anterior", "value": "+12%", "type": "growth" }
+  ],
+  "financialData": {
+    "totalMonth": 28450,
+    "growthPercent": 15.4,
+    "weeklyStats": [
+      { "day": "Seg", "value": 2100 },
+      { "day": "Ter", "value": 4280 },
+      { "day": "Qua", "value": 3500 },
+      { "day": "Qui", "value": 2900 },
+      { "day": "Sex", "value": 5100 },
+      { "day": "Sáb", "value": 6800 },
+      { "day": "Dom", "value": 0 }
+    ],
+    "topServices": [
+      { "name": "Corte Feminino", "total": 12400, "count": 68 },
+      { "name": "Coloração", "total": 8200, "count": 25 },
+      { "name": "Manicure", "total": 3450, "count": 40 }
+    ]
+  }
+}
