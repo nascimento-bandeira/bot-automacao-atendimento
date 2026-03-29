@@ -20,12 +20,12 @@ export default function Home() {
           </h2>
         </section>
 
-        <button className="w-full bg-linear-to-r from-amber-500 to-amber-600 text-white flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg shadow-[0_10px_20px_-5px_rgba(217,119,6,0.3)] active:scale-[0.98] transition-all">
+        <Link href="/agendar" className="w-full bg-linear-to-r from-amber-500 to-amber-600 text-white flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg shadow-[0_10px_20px_-5px_rgba(217,119,6,0.3)] active:scale-[0.98] transition-all">
           <div className="bg-white/20 p-1 rounded-full">
             <Plus size={20} strokeWidth={3} />
           </div>
           Novo Agendamento
-        </button>
+        </Link>
 
         
         <div className="grid grid-cols-2 gap-4">
@@ -37,12 +37,14 @@ export default function Home() {
           </p>
         </div>
           </Link>
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-stitch border-l-4 border-l-slate-200 space-y-1">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sessões</p>
-          <p className="text-3xl font-black text-slate-950">
-            {tenant.stats.sessionsToday}
-          </p>
-        </div>
+          <Link href="/analises">
+            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-stitch border-l-4 border-l-slate-200 space-y-1 h-full">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sessões</p>
+              <p className="text-3xl font-black text-slate-950">
+                {tenant.stats.sessionsToday}
+              </p>
+            </div>
+          </Link>
       </div>
 
         <ClientCard />

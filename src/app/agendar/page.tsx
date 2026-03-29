@@ -9,6 +9,41 @@ import Image from 'next/image';
 export default function BookingPage() {
   const [selectedService, setSelectedService] = useState<typeof tenant.services[0] | null>(null);
   const [selectedProfessional, setSelectedProfessional] = useState(tenant.professionals[0]);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("09:00");
+  const [isBooking, setIsBooking] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const handleConfirm = () => {
+    setIsBooking(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsBooking(false);
+      setIsSuccess(true);
+    }, 1500);
+  };
+
+  if (isSuccess) {
+    return (
+      <main className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-xl shadow-emerald-500/20 animate-bounce">
+          <CheckCircle2 size={48} strokeWidth={3} />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Agendamento Realizado!</h2>
+          <p className="text-slate-500 font-medium">Sua experiência foi reservada com sucesso.</p>
+        </div>
+        <button 
+          onClick={() => window.location.href = '/'}
+          className="w-full max-w-xs bg-slate-950 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-slate-950/20 active:scale-95 transition-all"
+        >
+          Voltar para Início
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-surface p-6 pb-32 max-w-lg mx-auto space-y-8">
@@ -29,6 +64,8 @@ export default function BookingPage() {
             type="text" 
             placeholder="Seu nome completo"
             className="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border border-slate-100 shadow-stitch outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div className="relative">
@@ -39,6 +76,8 @@ export default function BookingPage() {
             type="tel" 
             placeholder="Telefone de contato"
             className="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border border-slate-100 shadow-stitch outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
           />
         </div>
       </section>
@@ -73,15 +112,24 @@ export default function BookingPage() {
         <div className="space-y-2">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter ml-1">Data</label>
           <div className="relative">
-            <input type="date" className="w-full p-4 bg-white rounded-2xl border border-slate-100 shadow-stitch text-sm font-bold outline-none" />
+            <input 
+              type="date" 
+              className="w-full p-4 bg-white rounded-2xl border border-slate-100 shadow-stitch text-sm font-bold outline-none" 
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
         </div>
         <div className="space-y-2">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter ml-1">Horário</label>
-          <select className="w-full p-4 bg-white rounded-2xl border border-slate-100 shadow-stitch text-sm font-bold outline-none appearance-none">
-            <option>09:00</option>
-            <option>10:00</option>
-            <option>14:00</option>
+          <select 
+            className="w-full p-4 bg-white rounded-2xl border border-slate-100 shadow-stitch text-sm font-bold outline-none appearance-none"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          >
+            <option value="09:00">09:00</option>
+            <option value="10:00">10:00</option>
+            <option value="14:00">14:00</option>
           </select>
         </div>
       </section>
@@ -132,10 +180,15 @@ export default function BookingPage() {
           </div>
         )}
         <button 
-          disabled={!selectedService}
-          className="w-full bg-linear-to-r from-brand-500 to-brand-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-brand-500/20 active:scale-95 disabled:opacity-50 disabled:grayscale transition-all"
+          disabled={!selectedService || !name || !date || isBooking}
+          onClick={handleConfirm}
+          className={`w-full py-4 rounded-2xl font-black shadow-lg active:scale-95 disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-2
+            ${isBooking ? 'bg-slate-100 text-slate-400' : 'bg-linear-to-r from-brand-500 to-brand-600 text-white shadow-brand-500/20'}
+          `}
         >
-          Confirmar Agendamento
+          {isBooking ? (
+            <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+          ) : 'Confirmar Agendamento'}
         </button>
       </footer>
 

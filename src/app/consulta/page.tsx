@@ -3,21 +3,61 @@
 import { useState } from 'react';
 import { tenant } from "@/config/tenant";
 import { AppHeader } from "@/components/navigation/AppHeader";
-import { MoreVertical, Plus } from "lucide-react";
+import { MoreVertical, Plus, Trash2, Clock, X, Check, Calendar as CalendarIcon, Scissors, User, Settings2 } from "lucide-react";
 import Image from "next/image";
 import Link from 'next/link';
+import { formatCurrency } from "@/utils/format";
 
 export default function AgendaPage() {
+  const [appointments, setAppointments] = useState(tenant.appointments);
   const [activeFilter, setActiveFilter] = useState('TODOS');
-  const [selectedDay, setSelectedDay] = useState(14); // Exemplo: Terça, 14
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [editingApp, setEditingApp] = useState<typeof tenant.appointments[0] | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(0); // Index of generated days
 
-  const days = [
-    { label: 'SEG', num: 13 },
-    { label: 'TER', num: 14 },
-    { label: 'QUA', num: 15 },
-    { label: 'QUI', num: 16 },
-    { label: 'SEX', num: 17 },
-  ];
+  const getDays = () => {
+    const today = new Date();
+    const result = [];
+    const weekDays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+    
+    for (let i = 0; i < 30; i++) {
+      const d = new Date();
+      d.setDate(today.getDate() + i);
+      result.push({
+        label: weekDays[d.getDay()],
+        num: d.getDate(),
+        fullDate: d
+      });
+    }
+    return result;
+  };
+
+  const days = getDays();
+  const currentMonth = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date());
+
+  const handleStatusChange = (id: string, newStatus: string) => {
+    setAppointments(appointments.map(app => 
+      app.id === id ? { ...app, status: newStatus } : app
+    ));
+    setActiveMenuId(null);
+  };
+
+  const handleUpdateAppointment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingApp) {
+      setAppointments(appointments.map(app => 
+        app.id === editingApp.id ? editingApp : app
+      ));
+      setIsModalOpen(false);
+      setEditingApp(null);
+    }
+  };
+
+  const handleDeleteAppointment = (id: string) => {
+    setAppointments(appointments.filter(app => app.id !== id));
+    setActiveMenuId(null);
+  };
 
   const filters = ['TODOS', 'AGENDADO', 'REALIZADO', 'CANCELADO'];
 
@@ -29,17 +69,17 @@ export default function AgendaPage() {
         {/* Título e Mês */}
         <div className="flex justify-between items-end">
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">Agendamentos</h2>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Maio 2024</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{currentMonth}</span>
         </div>
 
         {/* Calendário Estilo Apple */}
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-          {days.map((day) => (
+          {days.map((day, idx) => (
             <button
-              key={day.num}
-              onClick={() => setSelectedDay(day.num)}
+              key={idx}
+              onClick={() => setSelectedDay(idx)}
               className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-2xl transition-all ${
-                selectedDay === day.num 
+                selectedDay === idx 
                 ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30 scale-105' 
                 : 'bg-white text-slate-400 border border-slate-100'
               }`}
@@ -69,20 +109,22 @@ export default function AgendaPage() {
 
         {/* Lista de Cards */}
         <div className="space-y-4">
-          {tenant.appointments
+          {appointments
             .filter(app => activeFilter === 'TODOS' || app.status === activeFilter)
             .map((app) => (
               <div 
                 key={app.id} 
-                className={`bg-white p-5 rounded-3xl border border-slate-100 shadow-stitch relative overflow-hidden flex items-center gap-4`}
+                className={`bg-white p-5 rounded-3xl border border-slate-100 shadow-stitch relative flex items-center gap-4`}
               >
                 {/* Borda Lateral Colorida por Status */}
                 <div className={`absolute left-0 top-4 bottom-4 w-1 rounded-r-full ${
                   app.status === 'AGENDADO' ? 'bg-amber-500' : 
-                  app.status === 'REALIZADO' ? 'bg-slate-300' : 'bg-rose-400'
+                  app.status === 'REALIZADO' ? 'bg-emerald-500' : 'bg-rose-400'
                 }`} />
 
-                <Image src={app.imageUrl || '/next.svg'} alt={app.clientName} width={50} height={50} className="rounded-full bg-slate-100" />
+                <div className="relative w-[50px] h-[50px] flex-shrink-0">
+                    <Image src={app.imageUrl || '/next.svg'} alt={app.clientName} fill className="rounded-full bg-slate-100 object-cover" />
+                </div>
                 
                 <div className="flex-1">
                   <h4 className="font-bold text-slate-900 leading-tight">{app.clientName}</h4>
@@ -91,11 +133,11 @@ export default function AgendaPage() {
                   {/* Status Pill Interno */}
                   <div className={`mt-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-black uppercase ${
                     app.status === 'AGENDADO' ? 'bg-amber-50 text-amber-600' : 
-                    app.status === 'REALIZADO' ? 'bg-slate-100 text-slate-500' : 'bg-rose-50 text-rose-600'
+                    app.status === 'REALIZADO' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
                   }`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${
                       app.status === 'AGENDADO' ? 'bg-amber-500' : 
-                      app.status === 'REALIZADO' ? 'bg-slate-400' : 'bg-rose-500'
+                      app.status === 'REALIZADO' ? 'bg-emerald-500' : 'bg-rose-400'
                     }`} />
                     {app.status}
                   </div>
@@ -106,14 +148,172 @@ export default function AgendaPage() {
                     <p className="text-lg font-black text-slate-950">{app.time}</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase">{app.duration}</p>
                   </div>
-                  <button className="text-slate-300 hover:text-slate-600">
-                    <MoreVertical size={18} />
-                  </button>
+                  <div className="relative">
+                    <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === app.id ? null : app.id);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                          activeMenuId === app.id 
+                          ? 'bg-slate-900 text-white' 
+                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                        }`}
+                    >
+                        <Settings2 size={14} />
+                        Gerenciar
+                    </button>
+                    
+                    {activeMenuId === app.id && (
+                        <>
+                        <div className="fixed inset-0 z-[45]" onClick={() => setActiveMenuId(null)} />
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                            <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Ações do Agendamento</p>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    setEditingApp(app);
+                                    setIsModalOpen(true);
+                                    setActiveMenuId(null);
+                                }}
+                                className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest hover:bg-slate-50 border-b border-slate-50 flex items-center gap-2"
+                            >
+                                <Clock size={14} className="text-blue-500" /> Editar / Reagendar
+                            </button>
+                            <button 
+                                onClick={() => handleStatusChange(app.id, 'REALIZADO')}
+                                className="w-full text-left px-4 py-3 text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:bg-emerald-50 border-b border-slate-50 flex items-center gap-2"
+                            >
+                                <Check size={14} /> Concluir
+                            </button>
+                            <button 
+                                onClick={() => handleStatusChange(app.id, 'CANCELADO')}
+                                className="w-full text-left px-4 py-3 text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-50 border-b border-slate-50 flex items-center gap-2"
+                            >
+                                <X size={14} /> Cancelar
+                            </button>
+                            <button 
+                                onClick={() => handleDeleteAppointment(app.id)}
+                                className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 flex items-center gap-2"
+                            >
+                                <Trash2 size={14} /> Excluir
+                            </button>
+                        </div>
+                        </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
         </div>
       </div>
+
+      {/* Modal de Edição */}
+      {isModalOpen && editingApp && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 animate-in fade-in duration-300">
+            <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+            <form 
+                onSubmit={handleUpdateAppointment}
+                className="relative w-full max-w-lg bg-white rounded-t-[40px] sm:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-20 duration-500"
+            >
+                <div className="p-8 space-y-8">
+                    <header className="flex justify-between items-start">
+                        <div className="space-y-1">
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Editar Agendamento</h3>
+                            <p className="text-xs font-medium text-slate-500">Altere os detalhes do procedimento.</p>
+                        </div>
+                        <button 
+                            type="button"
+                            onClick={() => setIsModalOpen(false)}
+                            className="p-2 bg-slate-100 text-slate-400 rounded-xl hover:text-slate-900"
+                        >
+                            <X size={20} />
+                        </button>
+                    </header>
+
+                    <div className="space-y-5">
+                        {/* Status */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Status do Agendamento</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {['AGENDADO', 'REALIZADO', 'CANCELADO'].map(status => (
+                                    <button
+                                        key={status}
+                                        type="button"
+                                        onClick={() => setEditingApp({ ...editingApp, status })}
+                                        className={`py-3 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border-2 ${
+                                            editingApp.status === status
+                                            ? status === 'REALIZADO' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' :
+                                              status === 'CANCELADO' ? 'bg-rose-50 border-rose-500 text-rose-700' :
+                                              'bg-amber-50 border-amber-500 text-amber-700'
+                                            : 'bg-white border-slate-100 text-slate-400'
+                                        }`}
+                                    >
+                                        {status}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Tempo e Horário */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Horário</label>
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-4 flex items-center text-slate-400"><Clock size={16} /></span>
+                                    <input 
+                                        type="text" 
+                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-amber-500"
+                                        value={editingApp.time}
+                                        onChange={(e) => setEditingApp({ ...editingApp, time: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Duração</label>
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-4 flex items-center text-slate-400"><CalendarIcon size={16} /></span>
+                                    <input 
+                                        type="text" 
+                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none"
+                                        value={editingApp.duration}
+                                        onChange={(e) => setEditingApp({ ...editingApp, duration: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Serviço */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1">Serviço</label>
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-4 flex items-center text-slate-400"><Scissors size={16} /></span>
+                                <select 
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-amber-500 appearance-none"
+                                    value={editingApp.service}
+                                    onChange={(e) => setEditingApp({ ...editingApp, service: e.target.value })}
+                                >
+                                    {tenant.services.map(s => (
+                                        <option key={s.id} value={s.name}>{s.name} - {formatCurrency(s.price)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-4">
+                        <button 
+                            type="submit"
+                            className="flex-1 bg-slate-950 text-white py-4 rounded-2xl font-black text-lg active:scale-95 transition-all shadow-xl shadow-slate-950/20"
+                        >
+                            Salvar Alterações
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+      )}
 
       {/* Floating Action Button (FAB) */}
       <Link href="/agendar" className="fixed bottom-24 right-6 w-14 h-14 bg-amber-600 text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-40 border-4 border-white">
