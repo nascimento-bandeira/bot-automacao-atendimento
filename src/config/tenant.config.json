@@ -8,6 +8,11 @@
     "primary": "bg-slate-950",
     "accent": "bg-amber-600"
   },
+  "services": [
+    { "id": "1", "name": "Corte Feminino", "durationMinutes": 60, "price": 120 },
+    { "id": "2", "name": "Coloração", "durationMinutes": 120, "price": 250 },
+    { "id": "3", "name": "Manicure", "durationMinutes": 45, "price": 50 }
+  ],
   "highlights": [
     { "label": "Média Avaliações", "value": "4.9", "type": "star" },
     { "label": "vs Semana Anterior", "value": "+12%", "type": "growth" }

@@ -1,3 +1,10 @@
+export interface Service {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  price: number;
+}
+
 export interface TenantConfig {
   slug: string;
   name: string;
@@ -8,6 +15,7 @@ export interface TenantConfig {
     accent: string;
   };
   ownerName: string;
+  services: Service[];
   highlights: {
     label: string;
     value: string;
