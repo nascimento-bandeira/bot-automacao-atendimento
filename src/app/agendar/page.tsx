@@ -5,7 +5,7 @@ import { tenant } from "@/config/tenant";
 import { formatCurrency } from "@/utils/format";
 import { User, Phone, Scissors, Clock, CheckCircle2 } from 'lucide-react';
 import { api } from '@/services/api';
-import { Service, Professional, BusinessHour } from '@/types';
+import { Service, Professional } from '@/types';
 
 export default function BookingPage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -17,7 +17,7 @@ export default function BookingPage() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
+  const [isSlotsLoading, setIsSlotsLoading] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,13 +29,11 @@ export default function BookingPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [servs, profs, hours] = await Promise.all([
+      const [servs, profs] = await Promise.all([
         api.getServices(tenant.slug),
-        api.getProfessionals(tenant.slug),
-        api.getBusinessHours(tenant.slug)
+        api.getProfessionals(tenant.slug)
       ]);
       if (servs) setServices(servs);
-      if (hours) setBusinessHours(hours);
       if (profs && profs.length > 0) {
         setProfessionals(profs);
         setSelectedProfessional(profs[0]);
@@ -70,28 +68,33 @@ export default function BookingPage() {
     return slots;
   };
 
+  // Busca slots livres via API sempre que a data mudar.
+  // A rota /api/n8n/disponibilidade já desconta os horários já agendados
+  // em sys_appointments, evitando agendamentos duplicados.
   useEffect(() => {
-    if (date && businessHours.length > 0) {
-      const selectedDate = new Date(date + 'T00:00:00');
-      const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday...
-      
-      // Mapeamento simples baseado nos labels padrão
-      // Ajustável se os labels mudarem drasticamente
-      let dayRange;
-      if (dayOfWeek === 0) {
-        dayRange = businessHours.find(h => h.label.toLowerCase().includes('domingo'));
-      } else if (dayOfWeek === 6) {
-        dayRange = businessHours.find(h => h.label.toLowerCase().includes('sábado') || h.label.toLowerCase().includes('sabado'));
-      } else {
-        dayRange = businessHours.find(h => h.label.toLowerCase().includes('segunda') || h.label.toLowerCase().includes('sexta'));
-      }
+    if (!date) return;
 
-      const slots = dayRange ? generateTimeSlots(dayRange.time) : [];
-      setAvailableSlots(slots);
-      if (slots.length > 0) setTime(slots[0]);
-      else setTime("");
-    }
-  }, [date, businessHours]);
+    const fetchSlots = async () => {
+      setIsSlotsLoading(true);
+      setAvailableSlots([]);
+      setTime("");
+      try {
+        const res = await fetch(
+          `/api/n8n/disponibilidade?slug=${tenant.slug}&date=${date}`
+        );
+        const json = await res.json();
+        const slots: string[] = json.horarios_livres || [];
+        setAvailableSlots(slots);
+        if (slots.length > 0) setTime(slots[0]);
+      } catch (e) {
+        console.error("Erro ao buscar horários livres", e);
+      } finally {
+        setIsSlotsLoading(false);
+      }
+    };
+
+    fetchSlots();
+  }, [date]);
 
   const handleConfirm = async () => {
     if (!selectedService || !selectedProfessional) return;
@@ -100,7 +103,7 @@ export default function BookingPage() {
       await api.createAppointment(tenant.slug, {
         client_name: name,
         service: selectedService.name,
-        date: date, // Armazena a data real selecionada no Supabase
+        date: date, // Nome padronizado da coluna no banco
         time: time,
         duration: `${selectedService.duration_minutes} MIN`,
         status: 'AGENDADO'
@@ -222,14 +225,18 @@ export default function BookingPage() {
             className="w-full p-4 bg-white rounded-2xl border border-slate-100 shadow-stitch text-sm font-bold outline-none appearance-none disabled:opacity-50"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            disabled={availableSlots.length === 0}
+            disabled={isSlotsLoading || availableSlots.length === 0}
           >
-            {availableSlots.length > 0 ? (
+            {isSlotsLoading ? (
+              <option value="">Buscando horários...</option>
+            ) : availableSlots.length > 0 ? (
               availableSlots.map(slot => (
                 <option key={slot} value={slot}>{slot}</option>
               ))
+            ) : date ? (
+              <option value="">Sem horários livres</option>
             ) : (
-              <option value="">Indisponível</option>
+              <option value="">Escolha a data primeiro</option>
             )}
           </select>
         </div>

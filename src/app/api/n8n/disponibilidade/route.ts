@@ -47,14 +47,20 @@ export async function GET(request: Request) {
 
     let appliedStart = "";
     let appliedEnd = "";
+    let allSlots: string[] = [];
 
     let appliedRule = rules.find(r => r.type === 'specific' && r.date === dateStr);
 
     if (appliedRule) {
       appliedStart = appliedRule.start_time;
       appliedEnd = appliedRule.end_time;
+      
+      // Se já tivermos o array fatiado no banco, usamos ele! (Economiza CPU)
+      if (appliedRule.time_slots && appliedRule.time_slots.length > 0) {
+        allSlots = appliedRule.time_slots;
+      }
     } else {
-      // Regra genérica global
+      // Regra genérica global (Business Hours)
       const getDayIndex = (str: string) => {
         return dayLabels.findIndex(d => str.includes(d));
       };
@@ -95,31 +101,36 @@ export async function GET(request: Request) {
       appliedEnd = times[1];
     }
 
-    // 2. Gerar slots de 30 em 30 min
-    const startParts = appliedStart.split(':');
-    const endParts = appliedEnd.split(':');
-    const startMins = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-    const endMins = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+    // 2. Gerar slots de 30 em 30 min (FallBack caso o array do banco não exista por algum motivo)
+    if (allSlots.length === 0 && appliedStart && appliedEnd) {
+      const startParts = appliedStart.split(':');
+      const endParts = appliedEnd.split(':');
+      const startMins = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+      const endMins = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
 
-    const allSlots: string[] = [];
-    for (let m = startMins; m < endMins; m += 30) {
-      const hh = Math.floor(m / 60).toString().padStart(2, '0');
-      const mm = (m % 60).toString().padStart(2, '0');
-      allSlots.push(`${hh}:${mm}`);
+      for (let m = startMins; m < endMins; m += 30) {
+        const hh = Math.floor(m / 60).toString().padStart(2, '0');
+        const mm = (m % 60).toString().padStart(2, '0');
+        allSlots.push(`${hh}:${mm}`);
+      }
     }
 
-    // 3. Consultar a tabela 'disponibilidade' que o seu bot já usa.
-    // Vamos pegar todos os horários que já tem uma marcação (disponivel = FALSE) nessa data
+    // 3. Consultar sys_appointments como fonte única de verdade.
+    // Isso garante que agendamentos feitos pelo bot E pelo formulário web
+    // sejam considerados, evitando horários duplicados.
     const { data: ocupados, error: ocupadosError } = await supabase
-      .from('disponibilidade')
-      .select('horario')
-      .eq('data', dateStr)
-      .eq('disponivel', false);
+      .from('sys_appointments')
+      .select('time')
+      .eq('slug', slug)
+      .eq('date', dateStr)
+      .in('status', ['AGENDADO']); // Só bloqueia confirmados; ignora cancelados
 
     if (ocupadosError) throw ocupadosError;
 
-    // Mapeia para formatos fáceis de conferir "HH:mm"
-    const horariosOcupados = ocupados.map(o => o.horario.substring(0, 5));
+    // Normaliza para "HH:mm" (o campo time pode ser "09:00" ou "09:00:00")
+    const horariosOcupados = (ocupados || []).map(o =>
+      typeof o.time === 'string' ? o.time.substring(0, 5) : ''
+    );
 
     // 4. Subtrai os horários ocupados da lista geral de slots gerados
     const horariosVazios = allSlots.filter(slot => !horariosOcupados.includes(slot));

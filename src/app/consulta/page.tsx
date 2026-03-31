@@ -169,8 +169,9 @@ export default function AgendaPage() {
           ) : appointments
             .filter(app => {
               // Busca os campos mais prováveis de data no Supabase 
-              const dbDateRaw = app.date || app.data || app.created_at; 
-              if (!dbDateRaw) return false; // Sem data, esconde
+              // Agora usando a coluna oficial 'date' padronizada.
+              const dbDateRaw = app.date; 
+              if (!dbDateRaw) return false; 
 
               // Transforma algo como "2026-03-31T14:30:00.000Z" em "2026-03-31"
               const formattedDbDate = dbDateRaw.split('T')[0];
@@ -209,7 +210,7 @@ export default function AgendaPage() {
                 <div className="text-right flex flex-col items-end gap-1.5">
                   <div className="leading-none text-right flex flex-col items-end gap-1">
                     <p className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md uppercase tracking-widest border border-amber-100">
-                      {formatDate(app.date || app.data || app.created_at)}
+                      {formatDate(app.date || app.created_at)}
                     </p>
                     <p className="text-lg font-black text-slate-950">{app.time}</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase">{app.duration}</p>

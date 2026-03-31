@@ -26,8 +26,7 @@ export interface Appointment {
   client_name?: string;
   clientName?: string; // Some pages use clientName
   service: string;
-  date?: string; // Adicionado para suportar agendamentos reais por dia
-  data?: string; // Suporte a tabelas que usam 'data' em português
+  date: string; // Coluna oficial (YYYY-MM-DD)
   created_at?: string;
   time: string;
   duration: string;
@@ -75,4 +74,5 @@ export interface AvailabilityRule {
   day_of_month?: number; // 1-31
   start_time: string; // HH:mm
   end_time: string; // HH:mm
+  time_slots?: string[]; // Array fatiado de 30 em 30 min (SQL Generated)
 }
