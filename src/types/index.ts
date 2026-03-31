@@ -26,6 +26,9 @@ export interface Appointment {
   client_name?: string;
   clientName?: string; // Some pages use clientName
   service: string;
+  date?: string; // Adicionado para suportar agendamentos reais por dia
+  data?: string; // Suporte a tabelas que usam 'data' em português
+  created_at?: string;
   time: string;
   duration: string;
   status: 'AGENDADO' | 'REALIZADO' | 'CANCELADO';

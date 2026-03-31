@@ -5,7 +5,7 @@ import { tenant } from "@/config/tenant";
 import { AppHeader } from "@/components/navigation/AppHeader";
 import { Plus, Trash2, Clock, X, Check, Calendar as CalendarIcon, Scissors, Settings2 } from "lucide-react";
 import Link from 'next/link';
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, formatDate } from "@/utils/format";
 import { api } from "@/services/api";
 import { Appointment, Service } from "@/types";
 
@@ -104,6 +104,12 @@ export default function AgendaPage() {
 
   const filters = ['TODOS', 'AGENDADO', 'REALIZADO', 'CANCELADO'];
 
+  const formatObjDate = (d: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+  const selectedDateStr = formatObjDate(days[selectedDay].fullDate);
+
   return (
     <main className="min-h-screen bg-surface pb-32">
       <AppHeader />
@@ -161,6 +167,16 @@ export default function AgendaPage() {
               <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Nenhum agendamento encontrado</p>
             </div>
           ) : appointments
+            .filter(app => {
+              // Busca os campos mais prováveis de data no Supabase 
+              const dbDateRaw = app.date || app.data || app.created_at; 
+              if (!dbDateRaw) return false; // Sem data, esconde
+
+              // Transforma algo como "2026-03-31T14:30:00.000Z" em "2026-03-31"
+              const formattedDbDate = dbDateRaw.split('T')[0];
+              
+              return formattedDbDate === selectedDateStr;
+            })
             .filter(app => activeFilter === 'TODOS' || app.status === activeFilter)
             .map((app) => (
               <div 
@@ -190,8 +206,11 @@ export default function AgendaPage() {
                   </div>
                 </div>
 
-                <div className="text-right flex flex-col items-end gap-2">
-                  <div className="leading-none">
+                <div className="text-right flex flex-col items-end gap-1.5">
+                  <div className="leading-none text-right flex flex-col items-end gap-1">
+                    <p className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md uppercase tracking-widest border border-amber-100">
+                      {formatDate(app.date || app.data || app.created_at)}
+                    </p>
                     <p className="text-lg font-black text-slate-950">{app.time}</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase">{app.duration}</p>
                   </div>

@@ -100,6 +100,7 @@ export default function BookingPage() {
       await api.createAppointment(tenant.slug, {
         client_name: name,
         service: selectedService.name,
+        date: date, // Armazena a data real selecionada no Supabase
         time: time,
         duration: `${selectedService.duration_minutes} MIN`,
         status: 'AGENDADO'
