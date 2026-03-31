@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Settings, Service, Professional, Appointment, BusinessHour } from '@/types';
+import { Settings, Service, Professional, Appointment, BusinessHour, AvailabilityRule } from '@/types';
 
 export const api = {
   // ============================
@@ -152,5 +152,46 @@ export const api = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // ============================
+  // AVAILABILITY RULES (N8N Bot)
+  // ============================
+  async getAvailabilityRules(slug: string): Promise<AvailabilityRule[]> {
+    const { data, error } = await supabase
+      .from('sys_availability_rules')
+      .select('*')
+      .eq('slug', slug)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async createAvailabilityRule(slug: string, ruleData: Omit<AvailabilityRule, 'id' | 'slug'>) {
+    const { data, error } = await supabase
+      .from('sys_availability_rules')
+      .insert({ ...ruleData, slug })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async createAvailabilityRulesBulk(slug: string, rulesData: Omit<AvailabilityRule, 'id' | 'slug'>[]) {
+    const payloads = rulesData.map(r => ({ ...r, slug }));
+    const { data, error } = await supabase
+      .from('sys_availability_rules')
+      .insert(payloads)
+      .select();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteAvailabilityRule(id: string) {
+    const { error } = await supabase
+      .from('sys_availability_rules')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
   }
 };

@@ -36,6 +36,7 @@ export interface BusinessHour {
   label: string;
   time: string;
   closed: boolean;
+  day_of_week: number;
 }
 
 export interface TenantConfig {
@@ -60,4 +61,15 @@ export interface TenantConfig {
     weeklyStats: { day: string; value: number }[];
     topServices: { name: string; total: number; count: number }[];
   };
+}
+
+export interface AvailabilityRule {
+  id: string;
+  slug: string;
+  type: 'specific' | 'weekly' | 'monthly';
+  date?: string; // YYYY-MM-DD
+  day_of_week?: number; // 0-6
+  day_of_month?: number; // 1-31
+  start_time: string; // HH:mm
+  end_time: string; // HH:mm
 }

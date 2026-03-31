@@ -3,16 +3,17 @@
 import { tenant } from "@/config/tenant";
 import { AppHeader } from "@/components/navigation/AppHeader";
 import { formatCurrency } from "@/utils/format";
-import { Clock, Scissors, Users, Plus, Check, X, User, Trash2 } from "lucide-react";
+import { Clock, Scissors, Users, Plus, Check, X, User, Trash2, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "@/services/api";
-import { Professional, Service, BusinessHour } from "@/types";
+import { Professional, Service, BusinessHour, AvailabilityRule } from "@/types";
 import Image from "next/image";
 
 export default function SettingsPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
+  const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>([]);
   const [logoUrl, setLogoUrl] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [companyName, setCompanyName] = useState(tenant.name);
@@ -22,6 +23,13 @@ export default function SettingsPage() {
   const [isAddingService, setIsAddingService] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditingHours, setIsEditingHours] = useState(false);
+
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [newRuleStartTime, setNewRuleStartTime] = useState("09:00");
+  const [newRuleEndTime, setNewRuleEndTime] = useState("18:00");
+  const [specialDate, setSpecialDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSpecialHours, setIsSpecialHours] = useState(false);
 
   const [newName, setNewName] = useState("");
   const [newSurname, setNewSurname] = useState("");
@@ -38,11 +46,12 @@ export default function SettingsPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [setts, servs, profs, hours] = await Promise.all([
+      const [setts, servs, profs, hours, rules] = await Promise.all([
         api.getSettings(tenant.slug),
         api.getServices(tenant.slug),
         api.getProfessionals(tenant.slug),
-        api.getBusinessHours(tenant.slug)
+        api.getBusinessHours(tenant.slug),
+        api.getAvailabilityRules(tenant.slug)
       ]);
       
       if (setts) {
@@ -53,6 +62,7 @@ export default function SettingsPage() {
       if (servs) setServices(servs);
       if (profs) setProfessionals(profs);
       if (hours && hours.length > 0) setBusinessHours(hours);
+      if (rules) setAvailabilityRules(rules);
     } catch (e) {
       console.error("Erro ao carregar configurações", e);
     } finally {
@@ -76,6 +86,151 @@ export default function SettingsPage() {
       } catch (e) {
         console.error("Erro ao adicionar serviço", e);
       }
+    }
+  };
+
+  const extractHoursFromBusinessHour = (dateStr: string) => {
+    const targetDate = new Date(`${dateStr}T12:00:00`);
+    const dayOfWeek = targetDate.getDay();
+    const dayLabels = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+    const prefix = dayLabels[dayOfWeek];
+
+    const normalizeStr = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+    const getDayIndex = (str: string) => {
+      return dayLabels.findIndex(d => str.includes(d));
+    };
+
+    const bHour = businessHours.find(h => {
+      const label = normalizeStr(h.label);
+      if (label.includes(prefix)) return true; // Match direto
+
+      // Avalia ranges no formato "segunda a sexta" ou "seg - sex"
+      const parts = label.split(/\s+a\s+|\s*-\s*/);
+      if (parts.length === 2) {
+         const startIdx = getDayIndex(parts[0]);
+         const endIdx = getDayIndex(parts[1]);
+         
+         if (startIdx !== -1 && endIdx !== -1) {
+            if (startIdx <= endIdx) {
+               return dayOfWeek >= startIdx && dayOfWeek <= endIdx;
+            } else {
+               // Range cruzando o fim de semana ex: (Sexta a Segunda -> 5, 6, 0, 1)
+               return dayOfWeek >= startIdx || dayOfWeek <= endIdx;
+            }
+         }
+      }
+      return false;
+    });
+
+    if (!bHour || bHour.closed) {
+      return { start: "", end: "", isValid: false, reason: "Fechado neste dia da semana." };
+    }
+
+    const times = bHour.time.match(/\d{2}:\d{2}/g);
+    if (times && times.length >= 2) {
+      return { start: times[0], end: times[1], isValid: true };
+    }
+    return { start: "09:00", end: "18:00", isValid: true };
+  };
+
+  const handleToggleDay = async (formattedDate: string, existingRule?: AvailabilityRule) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      if (existingRule) {
+        await api.deleteAvailabilityRule(existingRule.id);
+        setAvailabilityRules(availabilityRules.filter(r => r.id !== existingRule.id));
+      } else {
+        const hourData = extractHoursFromBusinessHour(formattedDate);
+        if (!hourData.isValid) return; // Cannot click on globally closed Red days directly
+
+        // A click on an implicitly Green day (isValid = true) turns it White (Day Off) by saving 00:00 - 00:00
+        const data: Omit<AvailabilityRule, 'id' | 'slug'> = {
+          type: 'specific',
+          date: formattedDate,
+          start_time: "00:00",
+          end_time: "00:00",
+        };
+        const newRule = await api.createAvailabilityRule(tenant.slug, data);
+        setAvailabilityRules([...availabilityRules, newRule]);
+      }
+    } catch (e) {
+      console.error("Erro ao alterar dia", e);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSaveSpecialDay = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const existing = availabilityRules.find(r => r.date === specialDate);
+      if (existing) {
+        await api.deleteAvailabilityRule(existing.id);
+      }
+      const data: Omit<AvailabilityRule, 'id' | 'slug'> = {
+        type: 'specific',
+        date: specialDate,
+        start_time: newRuleStartTime,
+        end_time: newRuleEndTime,
+      };
+      
+      const newRule = await api.createAvailabilityRule(tenant.slug, data);
+      const filtered = availabilityRules.filter(r => r.date !== specialDate);
+      setAvailabilityRules([...filtered, newRule]);
+      
+      setIsSpecialHours(false);
+    } catch (e) {
+      console.error("Erro ao salvar dia especial", e);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const fillEntireMonth = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const payloads: Omit<AvailabilityRule, 'id' | 'slug'>[] = [];
+
+      for (let i = 1; i <= daysInMonth; i++) {
+        const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        // Skip if already exists
+        if (!availabilityRules.some(r => r.date === formattedDate)) {
+          const hourData = extractHoursFromBusinessHour(formattedDate);
+          if (hourData.isValid) {
+            payloads.push({
+              type: 'specific',
+              date: formattedDate,
+              start_time: hourData.start,
+              end_time: hourData.end,
+            });
+          }
+        }
+      }
+
+      if (payloads.length > 0) {
+        const inserted = await api.createAvailabilityRulesBulk(tenant.slug, payloads);
+        setAvailabilityRules([...availabilityRules, ...inserted]);
+      }
+    } catch (e) {
+      console.error("Erro ao preencher mes", e);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRemoveRule = async (id: string) => {
+    try {
+      await api.deleteAvailabilityRule(id);
+      setAvailabilityRules(availabilityRules.filter(r => r.id !== id));
+    } catch (e) {
+      console.error("Erro ao remover regra", e);
     }
   };
 
@@ -219,6 +374,234 @@ export default function SettingsPage() {
                 </span>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* 1.5 Calendário de Escala (N8N) */}
+        <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-stitch space-y-6">
+          <header className="flex justify-between items-start">
+            <div className="flex gap-4">
+              <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                <CalendarIcon size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Escala do Bot</h3>
+                <p className="text-xs font-semibold text-slate-400">Clique nos dias para liberar ou bloquear na agenda.</p>
+              </div>
+            </div>
+            
+            <div className={`p-2 rounded-xl text-xs font-bold transition-all ${isProcessing ? 'bg-emerald-50 text-emerald-600 animate-pulse' : 'bg-slate-50 text-slate-400 opacity-0'}`}>
+              Sincronizando...
+            </div>
+          </header>
+
+          <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-5">
+            {/* Controles do topo */}
+            <div className="flex flex-wrap gap-4 items-end justify-between">
+              
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setIsSpecialHours(!isSpecialHours)}
+                  className={`text-[10px] w-fit font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-all ${
+                    isSpecialHours 
+                      ? 'bg-amber-100 text-amber-700 border-amber-200 shadow-inner' 
+                      : 'bg-white text-slate-400 border-slate-200 hover:text-emerald-600'
+                  }`}
+                >
+                  {isSpecialHours ? 'Usando Horário Especial' : 'Ativar Horário Especial'}
+                </button>
+
+                {isSpecialHours ? (
+                  <div className="flex flex-col gap-3 bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-sm animate-in fade-in slide-in-from-left-2">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex flex-col px-2">
+                        <label className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Data Específica</label>
+                        <input
+                          type="date"
+                          className="text-sm font-black text-amber-900 bg-transparent outline-none"
+                          value={specialDate}
+                          onChange={(e) => setSpecialDate(e.target.value)}
+                        />
+                      </div>
+                      <div className="w-px h-8 bg-amber-200 hidden sm:block"></div>
+                      <div className="flex flex-col px-2">
+                        <label className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Abertura</label>
+                        <input
+                          type="time"
+                          className="text-sm font-black text-amber-900 bg-transparent outline-none w-20"
+                          value={newRuleStartTime}
+                          onChange={(e) => setNewRuleStartTime(e.target.value)}
+                        />
+                      </div>
+                      <div className="w-px h-8 bg-amber-200 hidden sm:block"></div>
+                      <div className="flex flex-col px-2">
+                        <label className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Fechamento</label>
+                        <input
+                          type="time"
+                          className="text-sm font-black text-amber-900 bg-transparent outline-none w-20"
+                          value={newRuleEndTime}
+                          onChange={(e) => setNewRuleEndTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <button 
+                      onClick={handleSaveSpecialDay}
+                      className="bg-amber-600 font-bold text-white text-xs py-2 rounded-lg hover:bg-amber-700 transition"
+                    >
+                      Salvar Feriado / Exceção
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100 animate-in fade-in slide-in-from-left-2">
+                    ✅ O Calendário usará automaticamente os horários reais configurados na seção "Horário de Funcionamento".
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                  className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-emerald-600 transition-colors shadow-sm"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <div className="w-40 text-center font-black text-slate-700 capitalize">
+                  {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                </div>
+                <button 
+                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                  className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-emerald-600 transition-colors shadow-sm"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* O Calendário VisuaL */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/50">
+                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                  <div key={d} className="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    {d}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-px bg-slate-100">
+                {(() => {
+                  const year = currentMonth.getFullYear();
+                  const month = currentMonth.getMonth();
+                  const firstDay = new Date(year, month, 1).getDay();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                  const blanks = Array.from({ length: firstDay }, (_, i) => <div key={`blank-${i}`} className="bg-white p-2"></div>);
+                  const days = Array.from({ length: daysInMonth }, (_, i) => {
+                    const dayDate = i + 1;
+                    const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayDate).padStart(2, '0')}`;
+                    
+                    const existingRule = availabilityRules.find(r => r.date === formattedDate);
+                    const isSelected = !!existingRule;
+                    
+                    const hourData = extractHoursFromBusinessHour(formattedDate);
+                    const isGloballyClosed = !hourData.isValid;
+
+                    let state: 'normal' | 'special' | 'closed' | 'open' = 'closed';
+                    if (isGloballyClosed) {
+                      state = 'closed'; // Vermelho (APENAS globalmente fechados)
+                      
+                      // Mas se tiver uma exceção rolando neste dia vermelho, ele fica Amarelo
+                      if (isSelected && existingRule.start_time !== "00:00") {
+                        state = 'special';
+                      }
+                    } else {
+                      if (isSelected) {
+                        const dbStart = existingRule.start_time.substring(0, 5);
+                        const dbEnd = existingRule.end_time.substring(0, 5);
+                        
+                        if (dbStart === "00:00" && dbEnd === "00:00") {
+                          state = 'open'; // Branco (O Lojista bloqueou esse dia manualmente)
+                        } else if (dbStart === hourData.start && dbEnd === hourData.end) {
+                          state = 'normal'; // Verde explicitly saved (Caso antigo)
+                        } else {
+                          state = 'special'; // Amarelo dourado (Exceção)
+                        }
+                      } else {
+                        state = 'normal'; // Verde por padrão
+                      }
+                    }
+
+                    let bgClass = '';
+                    let dotClass = '';
+                    if (state === 'normal') {
+                      bgClass = 'bg-emerald-500 text-white shadow-inner hover:brightness-110 active:scale-95 cursor-pointer';
+                      dotClass = 'bg-emerald-600 text-white';
+                    } else if (state === 'special') {
+                      bgClass = 'bg-amber-400 text-amber-950 shadow-inner hover:brightness-110 active:scale-95 cursor-pointer ring-2 ring-amber-300 ring-offset-1';
+                      dotClass = 'bg-amber-500 text-amber-950';
+                    } else if (state === 'closed') {
+                      bgClass = 'bg-rose-50 border border-rose-100 text-rose-300 opacity-80 cursor-not-allowed overflow-hidden';
+                      dotClass = 'text-rose-400 bg-rose-200/50';
+                    } else {
+                      bgClass = 'bg-white text-slate-400 hover:bg-slate-50 border border-slate-100 cursor-pointer active:scale-95';
+                      dotClass = 'text-slate-300 bg-slate-50 group-hover:bg-slate-200';
+                    }
+
+                    return (
+                      <div 
+                        key={dayDate} 
+                        onClick={() => {
+                          if (state !== 'closed') handleToggleDay(formattedDate, existingRule);
+                        }}
+                        className={`min-h-[4rem] sm:min-h-[5rem] p-1.5 flex flex-col transition-all group relative ${bgClass}`}
+                      >
+                        <span className={`text-xs font-black self-start w-6 h-6 flex items-center justify-center rounded-full ${dotClass}`}>
+                          {dayDate}
+                        </span>
+                        
+                        {isSelected && state !== 'closed' && state !== 'open' && (
+                          <div className={`mt-auto font-bold flex flex-col items-center justify-center leading-none py-1 ${state === 'special' ? 'text-amber-900' : 'text-emerald-100'}`}>
+                            <span className="text-[9px] tracking-tight">{existingRule.start_time.substring(0,5)}</span>
+                            <span className={`text-[7px] ${state === 'special' ? 'text-amber-700' : 'text-emerald-300'}`}>até</span>
+                            <span className="text-[9px] tracking-tight">{existingRule.end_time.substring(0,5)}</span>
+                          </div>
+                        )}
+                        
+                        {!isSelected && state === 'normal' && (
+                          <div className={`mt-auto font-bold flex flex-col items-center justify-center leading-none py-1 text-emerald-100 opacity-60`}>
+                            <span className="text-[9px] tracking-tight">{hourData.start}</span>
+                            <span className="text-[7px] text-emerald-300">até</span>
+                            <span className="text-[9px] tracking-tight">{hourData.end}</span>
+                          </div>
+                        )}
+                        
+                        {state === 'open' && (
+                          <div className="mt-auto m-auto -rotate-12 flex items-center justify-center pointer-events-none pb-2">
+                             <span className="text-[10px] uppercase font-black tracking-widest text-slate-300">Folga</span>
+                          </div>
+                        )}
+
+                        {state === 'closed' && (
+                          <div className="mt-auto m-auto -rotate-12 opacity-40 mix-blend-multiply flex items-center justify-center pointer-events-none pb-2">
+                            <span className="text-[10px] uppercase font-black tracking-widest text-rose-500">Fechado</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+
+                  return [...blanks, ...days];
+                })()}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button 
+                onClick={fillEntireMonth}
+                disabled={isProcessing}
+                className="bg-slate-900 text-white px-5 py-3 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Ativar o Mês Todo
+              </button>
+            </div>
           </div>
         </section>
 
